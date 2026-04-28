@@ -1,10 +1,12 @@
+// Demo Firebase project (isolated from production `kapetanova-kuca-waitlist`).
+// Web SDK keys are public-by-design — security comes from firestore.rules.
 const firebaseConfig = {
-  apiKey:            "AIzaSyB_bl_9yxfpHHH_8B1EyXhTrMcjTAc_g6M",
-  authDomain:        "kapetanova-kuca-waitlist.firebaseapp.com",
-  projectId:         "kapetanova-kuca-waitlist",
-  storageBucket:     "kapetanova-kuca-waitlist.firebasestorage.app",
-  messagingSenderId: "352764872512",
-  appId:             "1:352764872512:web:7dd42aa9141f88d5171ca5"
+  apiKey:            "AIzaSyCJf37EN3a5zTOnI2mfHsmx0zPmGhwUhL8",
+  authDomain:        "kapetanova-kuca-v2.firebaseapp.com",
+  projectId:         "kapetanova-kuca-v2",
+  storageBucket:     "kapetanova-kuca-v2.firebasestorage.app",
+  messagingSenderId: "513251943219",
+  appId:             "1:513251943219:web:4eceda28c8d359a5525446"
 };
 
 firebase.initializeApp(firebaseConfig);
