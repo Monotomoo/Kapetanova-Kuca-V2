@@ -265,31 +265,66 @@
     return words[0].charAt(0).toUpperCase();
   }
 
-  // ─── Mood word — derived from dominant profile axis + style ─────────
+  // ─── Mood words — derived from top profile axes + style ─────────
   const MOOD_WORDS = {
     sweetness: () => 'MEDENO',
     freshness: (style) => style === 'sparkling' ? 'ŽIVAHNO'
                        : style === 'rose' ? 'LJETNO'
                        : 'SVJEŽE',
     dryness:   (style) => style === 'orange' ? 'MACERIRANO'
-                       : style === 'red' ? 'STEGNUTO'
+                       : style === 'red' ? 'STRUKTURIRANO'
                        : 'SUHO',
     fruitiness: () => 'VOĆNO',
-    body:      (style) => style === 'red' ? 'MOĆNO' : 'PUNO',
+    body:      (style) => style === 'red' ? 'MOĆNO'
+                       : style === 'sparkling' ? 'BOGATO'
+                       : 'PUNO',
   };
-  function characteristicWord(wine) {
+  // Returns the dominant axis word, plus a secondary word if the next-highest axis is also strong.
+  function characteristicWords(wine) {
     const p = wine.profile;
     const axes = [
-      ['sweetness', p.sweetness],
-      ['freshness', p.freshness],
-      ['dryness',   p.dryness],
+      ['sweetness',  p.sweetness],
+      ['freshness',  p.freshness],
+      ['dryness',    p.dryness],
       ['fruitiness', p.fruitiness],
-      ['body',      p.body],
-    ];
-    axes.sort((a, b) => b[1] - a[1]);
-    const [topAxis] = axes[0];
-    const fn = MOOD_WORDS[topAxis];
-    return fn ? fn(wine.style) : 'ELEGANTNO';
+      ['body',       p.body],
+    ].sort((a, b) => b[1] - a[1]);
+
+    const word = (axisName) => {
+      const fn = MOOD_WORDS[axisName];
+      return fn ? fn(wine.style) : null;
+    };
+
+    const primary = word(axes[0][0]) || 'ELEGANTNO';
+    // Secondary only if it's >= 72 AND a different word from primary
+    if (axes[1] && axes[1][1] >= 72) {
+      const secondary = word(axes[1][0]);
+      if (secondary && secondary !== primary) {
+        return primary + ' · ' + secondary;
+      }
+    }
+    return primary;
+  }
+  // Backwards-compat alias (not used after this refactor, but safe to keep)
+  function characteristicWord(wine) { return characteristicWords(wine); }
+
+  // First sentence of the tasting notes — for the card pull-quote
+  function shortNote(notes) {
+    if (!notes) return '';
+    const trimmed = notes.trim();
+    const idx = trimmed.search(/\.\s/);
+    if (idx > 0 && idx < 110) return trimmed.slice(0, idx + 1);
+    if (trimmed.length <= 120) return trimmed;
+    return trimmed.slice(0, 100).split(' ').slice(0, -1).join(' ') + '…';
+  }
+
+  // Pick a pairing icon for the card by matching the wine's pairing text
+  // against the existing PAIRING_GROUPS rules. Same icon system as filter chips.
+  function pairIconForCard(wine) {
+    for (const g of PAIRING_GROUPS) {
+      if (g.match && g.match(wine)) return pairIcon(g.id);
+    }
+    return '';
   }
 
   // Overlay spider chart for chest comparison (multiple wines)
@@ -355,21 +390,72 @@
       <div class="wc-stage">
         <div class="wc-sheet">
 
-          <div class="wc-topbar">
-            <div class="wc-tb-left">42°51′N · 17°41′E<br><b>MALI STON · 2026</b></div>
-            <div class="wc-tb-title">
-              <img src="Kapetan Logo.png?v=4" alt="Kapetanova Kuća" class="wc-tb-logo" />
-              <h1>VINSKI PODRUM</h1>
-              <em>Carta Vinaria — Kapetanova Kuća</em>
-            </div>
-            <div class="wc-tb-right">br. III<br>vol. MMXXVI</div>
-          </div>
+          <section class="wc-hero" aria-label="Kapetanova Kuća — Vinski podrum">
+            <svg class="wc-hero-compass" viewBox="-150 -150 300 300" aria-hidden="true">
+              <defs>
+                <radialGradient id="wc-hero-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stop-color="rgba(195,149,54,0.22)"/>
+                  <stop offset="100%" stop-color="rgba(195,149,54,0)"/>
+                </radialGradient>
+              </defs>
+              <circle cx="0" cy="0" r="125" fill="url(#wc-hero-glow)"/>
+              <circle cx="0" cy="0" r="128" fill="none" stroke="rgba(195,149,54,0.42)" stroke-width="0.7"/>
+              <circle cx="0" cy="0" r="120" fill="none" stroke="rgba(195,149,54,0.22)" stroke-width="0.5"/>
+              <circle cx="0" cy="0" r="55"  fill="none" stroke="rgba(195,149,54,0.25)" stroke-width="0.5" stroke-dasharray="2 3"/>
+              <!-- 8 rays -->
+              <g stroke="rgba(195,149,54,0.35)" stroke-width="1">
+                <line x1="0"    y1="-120" x2="0"    y2="-58"/>
+                <line x1="84"   y1="-84"  x2="42"   y2="-42"/>
+                <line x1="120"  y1="0"    x2="58"   y2="0"/>
+                <line x1="84"   y1="84"   x2="42"   y2="42"/>
+                <line x1="0"    y1="120"  x2="0"    y2="58"/>
+                <line x1="-84"  y1="84"   x2="-42"  y2="42"/>
+                <line x1="-120" y1="0"    x2="-58"  y2="0"/>
+                <line x1="-84"  y1="-84"  x2="-42"  y2="-42"/>
+              </g>
+              <!-- Compass star at center -->
+              <polygon points="0,-26 9,-9 26,0 9,9 0,26 -9,9 -26,0 -9,-9"
+                fill="rgba(195,149,54,0.45)" stroke="rgba(110,82,26,0.55)" stroke-width="0.6"/>
+              <!-- Wine-red North tip -->
+              <polygon points="0,-50 5,-26 -5,-26" fill="rgba(122,34,48,0.6)"/>
+              <!-- Cardinal labels -->
+              <g font-family="Cinzel, serif" font-weight="700" font-size="12" fill="rgba(74,44,20,0.55)" text-anchor="middle" letter-spacing="2">
+                <text x="0"    y="-135">N</text>
+                <text x="138"  y="5">E</text>
+                <text x="0"    y="146">S</text>
+                <text x="-138" y="5">W</text>
+              </g>
+            </svg>
 
-          <aside class="wc-cellar-tagline" aria-label="O našem podrumu">
-            <span class="wc-tagline-mark">⚓</span>
-            <p class="wc-tagline-text">Stoljećima Mali Ston gleda na more s peljeških padina. Naš podrum okuplja blago hrvatskih vinograda — pošip s korčulanskog pijeska, plavac sa stijena Pelješca, malvasiju iz Konavla — i miješa ih sa svjetskim klasikom. <em>Svaka boca priča svoje stoljeće.</em></p>
-            <span class="wc-tagline-mark">⚓</span>
-          </aside>
+            <div class="wc-hero-content">
+              <div class="wc-hero-inscription">Per Mare &nbsp;·&nbsp; Per Vinum</div>
+
+              <div class="wc-hero-rule-row">
+                <span class="wc-hero-rule"></span>
+                <span class="wc-hero-rule-glyph">⚓</span>
+                <span class="wc-hero-rule"></span>
+              </div>
+
+              <h1 class="wc-hero-title"><span class="wc-hero-title-inner">VINSKI PODRUM</span></h1>
+              <div class="wc-hero-subtitle">Carta Vinaria — Kapetanova Kuća</div>
+
+              <div class="wc-hero-rule-row">
+                <span class="wc-hero-rule"></span>
+                <span class="wc-hero-rule-glyph">⚓</span>
+                <span class="wc-hero-rule"></span>
+              </div>
+
+              <p class="wc-hero-paragraph">Stoljećima Mali Ston gleda na more s peljeških padina. Naš podrum okuplja blago hrvatskih vinograda — pošip s korčulanskog pijeska, plavac sa stijena Pelješca, malvasiju iz Konavla — i miješa ih sa svjetskim klasikom. <em>Svaka boca priča svoje stoljeće.</em></p>
+
+              <div class="wc-hero-ledger">
+                <span>42°51′N · 17°41′E</span>
+                <span class="wc-hero-ledger-dot"></span>
+                <span>Mali Ston · MMXXVI</span>
+                <span class="wc-hero-ledger-dot"></span>
+                <span>Br. III · Vol. I</span>
+              </div>
+            </div>
+          </section>
 
           <!-- Top section (cat-hero + filters) — placeholder until Tomo's final top design lands -->
           <div class="wc-cat-hero">
@@ -609,29 +695,48 @@
               <span class="wc-badge">${esc(w.region.split(',')[0])}</span>
             </div>
           </div>
+          <div class="wc-card-mood-row">
+            <span class="wc-card-mood-rule"></span>
+            <span class="wc-card-mood-word">${esc(characteristicWords(w))}</span>
+            <span class="wc-card-mood-rule"></span>
+          </div>
           <div class="wc-card-body">
             <div class="wc-card-bottle">${bottleSVG(w, c)}</div>
-            <div class="wc-card-meta-wrap">
-              <div class="wc-card-mood">
-                <span class="wc-card-mood-rule"></span>
-                <span class="wc-card-mood-word">${esc(characteristicWord(w))}</span>
-                <span class="wc-card-mood-rule"></span>
+            <div class="wc-card-specs">
+              <div class="wc-card-spec-row wc-card-spec-full">
+                <span class="wc-card-k">Sorta</span>
+                <span class="wc-card-v">${esc(w.grapeVariety)}</span>
               </div>
-              <div class="wc-card-meta">
-                <div><span class="wc-card-k">Sorta</span><span class="wc-card-v">${esc(w.grapeVariety)}</span></div>
-                <div><span class="wc-card-k">Alk.</span><span class="wc-card-v">${w.abv}%</span></div>
+              <div class="wc-card-spec-row wc-card-spec-pair">
                 <div><span class="wc-card-k">Bačva</span><span class="wc-card-v">${esc(barrelTxt)}</span></div>
+                <div><span class="wc-card-k">Alk.</span><span class="wc-card-v">${w.abv}%</span></div>
+              </div>
+              <div class="wc-card-spec-row wc-card-spec-trio">
                 <div><span class="wc-card-k">Servis</span><span class="wc-card-v">${esc(w.servingC)}°</span></div>
+                <div><span class="wc-card-k">Dekant</span><span class="wc-card-v">${w.decantMin ? w.decantMin + '′' : '—'}</span></div>
+                <div><span class="wc-card-k">Čaša</span><span class="wc-card-v">${esc(w.glass)}</span></div>
               </div>
             </div>
           </div>
-          <div class="wc-card-pair">${esc(w.pairing || '')}</div>
+          ${shortNote(w.tastingNotes) ? `
+            <div class="wc-card-note">
+              <span class="wc-card-note-mark">“</span>
+              <span class="wc-card-note-text">${esc(shortNote(w.tastingNotes))}</span>
+            </div>
+          ` : ''}
+          <div class="wc-card-pair">
+            ${pairIconForCard(w) ? `<span class="wc-card-pair-icon">${pairIconForCard(w)}</span>` : '<span class="wc-card-pair-dash"></span>'}
+            <span class="wc-card-pair-text">${esc(w.pairing || '')}</span>
+          </div>
           <div class="wc-card-foot">
             <div class="wc-card-price">
               <span class="wc-card-price-app">${sp ?? '—'} €</span>
               <span class="wc-card-price-strike">${w.restaurantPrice ?? ''}€</span>
             </div>
-            <div class="wc-card-foot-meta"><b>${w.volume} ml</b><br>· ušteda ${savings}€ ·</div>
+            <div class="wc-card-foot-meta">
+              <span class="wc-card-foot-vol">${w.volume} ml</span>
+              <span class="wc-card-foot-savings">ušteda ${savings} €</span>
+            </div>
           </div>
         </button>`;
     }).join('');
@@ -1112,21 +1217,41 @@
     });
   }
 
+  // ─── Mode transition (chart-style: parchment circle + compass) ─────
+  function runTransition(applyMode) {
+    const t = $('wc-transition');
+    if (!t) { applyMode(); return; }
+    // Phase 1: overlay covers (parchment expands from center, compass spins in)
+    t.classList.add('show', 'expanding');
+    // Phase 2: swap mode behind the visible overlay
+    setTimeout(applyMode, 380);
+    // Phase 3: fade overlay out, revealing new view
+    setTimeout(() => t.classList.remove('show'), 620);
+    // Cleanup
+    setTimeout(() => t.classList.remove('expanding'), 1100);
+  }
+
   function activateCellar() {
-    document.body.classList.add('mode-cellar-active');
-    document.querySelectorAll('#mode-switcher .mode-btn').forEach(b => {
-      b.classList.toggle('active', b.id === 'tab-cellar');
+    runTransition(() => {
+      document.body.classList.add('mode-cellar-active');
+      document.querySelectorAll('#mode-switcher .mode-btn').forEach(b => {
+        b.classList.toggle('active', b.id === 'tab-cellar');
+      });
+      renderBrowse();
+      updateChestFab();
+      window.scrollTo(0, 0);
     });
-    renderBrowse();
-    updateChestFab();
-    window.scrollTo(0, 0);
   }
   function deactivateCellar() {
-    document.body.classList.remove('mode-cellar-active');
-    const cellarBtn = $('tab-cellar');
-    if (cellarBtn) cellarBtn.classList.remove('active');
-    closeDetail();
-    closeChest();
+    // Only run transition if cellar was actually active (avoids spurious overlay on plain tab clicks)
+    if (!document.body.classList.contains('mode-cellar-active')) return;
+    runTransition(() => {
+      document.body.classList.remove('mode-cellar-active');
+      const cellarBtn = $('tab-cellar');
+      if (cellarBtn) cellarBtn.classList.remove('active');
+      closeDetail();
+      closeChest();
+    });
   }
 
   // ═════════════════════════════════════════════════════════
@@ -1168,8 +1293,17 @@
       fab.className = 'wc-chest-fab';
       fab.setAttribute('aria-label', 'Otvori kovčeg');
       fab.innerHTML = `
-        <span class="wc-chest-fab-ico">⚓</span>
-        <span>Kovčeg</span>
+        <span class="wc-chest-fab-ico">
+          <svg viewBox="0 0 28 24" fill="none" aria-hidden="true">
+            <path d="M 2 10 Q 2 4 6 4 L 22 4 Q 26 4 26 10" fill="currentColor" stroke="currentColor" stroke-width="0.5"/>
+            <rect x="2" y="10" width="24" height="12" rx="1.5" fill="currentColor" stroke="currentColor" stroke-width="0.5"/>
+            <line x1="2" y1="13" x2="26" y2="13" stroke="rgba(0,0,0,0.45)" stroke-width="1.2"/>
+            <line x1="14" y1="10" x2="14" y2="22" stroke="rgba(0,0,0,0.35)" stroke-width="0.8"/>
+            <rect x="11.5" y="11" width="5" height="4" rx="0.6" fill="rgba(195,149,54,0.95)" stroke="rgba(74,44,20,0.6)" stroke-width="0.4"/>
+            <circle cx="14" cy="13" r="0.6" fill="rgba(0,0,0,0.55)"/>
+          </svg>
+        </span>
+        <span class="wc-chest-fab-label">Kovčeg</span>
         <span class="wc-chest-fab-b" id="wc-chest-badge">0</span>
       `;
       document.body.appendChild(fab);
@@ -1214,6 +1348,69 @@
       t.className = 'wc-toast';
       t.textContent = 'Ukrcano';
       document.body.appendChild(t);
+    }
+
+    if (!$('wc-transition')) {
+      const tr = document.createElement('div');
+      tr.id = 'wc-transition';
+      tr.className = 'wc-transition';
+      tr.setAttribute('aria-hidden', 'true');
+      tr.innerHTML = `
+        <div class="wc-transition-paper"></div>
+        <div class="wc-transition-compass">
+          <svg viewBox="-150 -150 300 300" aria-hidden="true">
+            <defs>
+              <radialGradient id="wcTransGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stop-color="rgba(195,149,54,0.55)"/>
+                <stop offset="100%" stop-color="rgba(195,149,54,0)"/>
+              </radialGradient>
+            </defs>
+            <!-- Halo -->
+            <circle cx="0" cy="0" r="135" fill="url(#wcTransGlow)"/>
+            <!-- Outer rings -->
+            <circle cx="0" cy="0" r="138" fill="none" stroke="rgba(110,82,26,0.5)" stroke-width="1" stroke-dasharray="2 4"/>
+            <circle cx="0" cy="0" r="125" fill="none" stroke="rgba(110,82,26,0.7)" stroke-width="1.4"/>
+            <circle cx="0" cy="0" r="115" fill="none" stroke="rgba(195,149,54,0.55)" stroke-width="0.7"/>
+            <!-- Inner dashed ring -->
+            <circle cx="0" cy="0" r="55" fill="none" stroke="rgba(195,149,54,0.55)" stroke-width="0.8" stroke-dasharray="3 3"/>
+            <!-- 8 main rays -->
+            <g stroke="rgba(195,149,54,0.6)" stroke-width="1.2">
+              <line x1="0"    y1="-115" x2="0"    y2="-58"/>
+              <line x1="81"   y1="-81"  x2="42"   y2="-42"/>
+              <line x1="115"  y1="0"    x2="58"   y2="0"/>
+              <line x1="81"   y1="81"   x2="42"   y2="42"/>
+              <line x1="0"    y1="115"  x2="0"    y2="58"/>
+              <line x1="-81"  y1="81"   x2="-42"  y2="42"/>
+              <line x1="-115" y1="0"    x2="-58"  y2="0"/>
+              <line x1="-81"  y1="-81"  x2="-42"  y2="-42"/>
+            </g>
+            <!-- 8 minor ticks (between mains) -->
+            <g stroke="rgba(195,149,54,0.32)" stroke-width="0.6">
+              <line x1="44"   y1="-106" x2="22"   y2="-53"/>
+              <line x1="106"  y1="-44"  x2="53"   y2="-22"/>
+              <line x1="106"  y1="44"   x2="53"   y2="22"/>
+              <line x1="44"   y1="106"  x2="22"   y2="53"/>
+              <line x1="-44"  y1="106"  x2="-22"  y2="53"/>
+              <line x1="-106" y1="44"   x2="-53"  y2="22"/>
+              <line x1="-106" y1="-44"  x2="-53"  y2="-22"/>
+              <line x1="-44"  y1="-106" x2="-22"  y2="-53"/>
+            </g>
+            <!-- 8-pointed compass star -->
+            <polygon points="0,-50 12,-12 50,0 12,12 0,50 -12,12 -50,0 -12,-12"
+              fill="rgba(195,149,54,0.7)" stroke="rgba(110,82,26,0.7)" stroke-width="1"/>
+            <!-- Wine-red North tip (longer than the others) -->
+            <polygon points="0,-92 7,-50 -7,-50" fill="rgba(122,34,48,0.88)"/>
+            <!-- Cardinal labels -->
+            <g font-family="Cinzel, serif" font-weight="700" font-size="16" fill="rgba(74,44,20,0.7)" text-anchor="middle" letter-spacing="3">
+              <text x="0"    y="-150">N</text>
+              <text x="150"  y="6">E</text>
+              <text x="0"    y="158">S</text>
+              <text x="-150" y="6">W</text>
+            </g>
+          </svg>
+        </div>
+      `;
+      document.body.appendChild(tr);
     }
   }
 
