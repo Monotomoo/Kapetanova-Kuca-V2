@@ -1,0 +1,26 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.log
+.vscode/
+.idea/
+
+# Claude Code session metadata
+.claude/
+
+# Internal versioning + design handoff (not for the demo deploy)
+_archive/
+_design-package/
+
+# Vercel local
+.vercel/
+
+# Node (if anything ever lands)
+node_modules/
+npm-debug.log*
+
+# Firebase emulator artifacts (if used later)
+.firebase/
+firebase-debug.log
+firestore-debug.log

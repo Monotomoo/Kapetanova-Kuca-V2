@@ -1,0 +1,99 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════
+//  Firestore security rules — Kapetanova Kuca V3
+// ═══════════════════════════════════════════════════
+//  Status: WRITTEN, NOT YET DEPLOYED.
+//
+//  Existing waitlist + bookings collections keep their
+//  open rules until Firebase Auth is wired (architecture
+//  plan §3 R1 + R2, currently parked).
+//
+//  New collections (wines, wineOrders, members, config)
+//  ship with proper rules so the day Tomo deploys, the
+//  guest PII risk on those collections is already locked.
+//
+//  Helper assumption: staff users get a custom claim
+//  `role == 'staff'` once Firebase Auth lands. Until then
+//  these write rules deny all writes — which is fine since
+//  the live app only writes via the localStorage adapter
+//  for the new collections.
+// ═══════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ────────────────────────────────────
+    function isAuthed() {
+      return request.auth != null;
+    }
+    function isStaff() {
+      return isAuthed() && request.auth.token.role == 'staff';
+    }
+    // For guest-writable collections: validate the doc shape
+    // doesn't include any field that should only be set by staff.
+    function noStaffOnlyFields(data, staffFields) {
+      return !data.keys().hasAny(staffFields);
+    }
+
+    // ─── EXISTING — waitlist + bookings ──────────────
+    // Currently open per architecture plan R1+R2 (parked).
+    // Will tighten when Auth is wired.
+    match /waitlist/{doc} {
+      allow read, write: if true;
+    }
+    match /bookings/{doc} {
+      allow read, write: if true;
+    }
+
+    // ─── NEW — wines (public catalog) ────────────────
+    // Anyone can read the catalog. Only staff can edit.
+    match /wines/{wineId} {
+      allow read: if true;
+      allow create, update, delete: if isStaff();
+    }
+
+    // ─── NEW — wineOrders (guest-creatable, staff-managed) ──
+    // Guests can submit orders. Only staff can read or update.
+    // Field-level guard: order can't claim status='ready' or set
+    // staff-only fields like pickedUpAt at creation time.
+    match /wineOrders/{orderId} {
+      allow read: if isStaff();
+      allow create: if
+        request.resource.data.status == 'pending' &&
+        request.resource.data.bottles is list &&
+        request.resource.data.bottles.size() > 0 &&
+        request.resource.data.totalPrice is number &&
+        noStaffOnlyFields(request.resource.data, ['pickedUpAt', 'staffNotes']);
+      allow update, delete: if isStaff();
+    }
+
+    // ─── NEW — members (Ostrea Club) ─────────────────
+    // Open sign-up. Staff manages the roster and tier upgrades.
+    // Guests can't read others' member info (PII protection).
+    match /members/{memberId} {
+      allow read: if isStaff();
+      allow create: if
+        request.resource.data.name is string &&
+        request.resource.data.phone is string &&
+        request.resource.data.status == 'active' &&
+        request.resource.data.tier == 'silver' &&
+        request.resource.data.visitCount == 0 &&
+        noStaffOnlyFields(request.resource.data, ['notes', 'perksUsed']);
+      allow update, delete: if isStaff();
+    }
+
+    // ─── NEW — config (app-wide settings, public read) ──
+    // Anyone can read config (souvenir discount %, box tier
+    // bonuses, curated boxes, etc.). Only staff can edit.
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    // ─── Default deny on anything not matched above ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
