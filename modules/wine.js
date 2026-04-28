@@ -45,6 +45,53 @@
   // ─── Tier filter ─────────────────────────────────────────
   const TIERS = ['€','€€','€€€','€€€€'];
 
+  // ─── Sort options ────────────────────────────────────────
+  const SORT_OPTIONS = [
+    { id: 'featured',   label: '★ Preporuka' },
+    { id: 'price_asc',  label: 'Cijena ↑' },
+    { id: 'price_desc', label: 'Cijena ↓' },
+    { id: 'year_desc',  label: 'Najnovije' },
+    { id: 'body_asc',   label: 'Lagano → Moćno' },
+    { id: 'name_asc',   label: 'A → Z' },
+  ];
+
+  // Strip parenthetical sub-region for grouping ("Lumbarda (Korčula)" → "Lumbarda")
+  function normRegion(r) {
+    return (r || '').replace(/\s*\([^)]*\)/g, '').trim();
+  }
+
+  // Compute [[region, count], …] from the in-stock wines, sorted by count desc
+  function getRegionGroups() {
+    const counts = {};
+    state.wines.forEach(w => {
+      if (!w.inStock) return;
+      const r = normRegion(w.region);
+      if (!r) return;
+      counts[r] = (counts[r] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return a[0].localeCompare(b[0]);
+    });
+  }
+
+  // Sort the filtered list per the active sort option
+  function sortWines(list, sortId) {
+    const arr = list.slice();
+    switch (sortId) {
+      case 'price_asc':  return arr.sort((a, b) => (a.restaurantPrice || 0) - (b.restaurantPrice || 0));
+      case 'price_desc': return arr.sort((a, b) => (b.restaurantPrice || 0) - (a.restaurantPrice || 0));
+      case 'year_desc':  return arr.sort((a, b) => (b.year || 0) - (a.year || 0));
+      case 'body_asc':   return arr.sort((a, b) => (a.profile.body || 0) - (b.profile.body || 0));
+      case 'name_asc':   return arr.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      case 'featured':
+      default:           return arr.sort((a, b) => {
+        if (a.featured !== b.featured) return a.featured ? -1 : 1;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    }
+  }
+
   // ─── Pairing groups (food-pairing filter) ────────────────
   const PAIRING_GROUPS = [
     { id:'fish',    label:'Uz ribu',    match:(w) => /rib|hobotnic|ligan|brancin|orad|tuna|kamen|crni rižoto|skoljk|cevich|brodet|plodov|lignj/i.test((w.pairing || '') + ' ' + (w.dishes || []).join(' ')) },
@@ -71,7 +118,8 @@
     wines: [],
     config: null,
     activeTab: 'all',
-    activeFilters: { tier: null, body: null, pair: null },
+    activeFilters: { tier: null, body: null, pair: null, region: null },
+    activeSort: 'featured',
     chest: [],            // array of wine ids in the kovčeg
     openWineId: null,
     toastTimer: null,
@@ -364,7 +412,7 @@
   //  Filter pipeline
   // ═════════════════════════════════════════════════════════
   function entries() {
-    return state.wines.filter(w => {
+    const list = state.wines.filter(w => {
       if (!w.inStock) return false;
       if (state.activeTab !== 'all' && w.style !== state.activeTab) return false;
       if (state.activeFilters.tier && w.tier !== state.activeFilters.tier) return false;
@@ -376,8 +424,12 @@
         const p = PAIRING_GROUPS.find(x => x.id === state.activeFilters.pair);
         if (p && !p.match(w)) return false;
       }
+      if (state.activeFilters.region) {
+        if (normRegion(w.region) !== state.activeFilters.region) return false;
+      }
       return true;
     });
+    return sortWines(list, state.activeSort || 'featured');
   }
 
   // ═════════════════════════════════════════════════════════
@@ -665,17 +717,23 @@
     const e = $('wc-filters');
     if (!e) return;
     const af = state.activeFilters;
+    const sort = state.activeSort || 'featured';
     let activeCount = 0;
     if (af.body) activeCount++;
     if (af.tier) activeCount++;
     if (af.pair) activeCount++;
+    if (af.region) activeCount++;
+    // Sort doesn't count — always has a value (default 'featured')
 
     const countLabel = activeCount === 1 ? '1 aktivan filter' :
                        activeCount === 0 ? '' :
                        `${activeCount} aktivna filtra`;
 
+    const regions = getRegionGroups();
+
     e.innerHTML = `
       <div class="wc-filter-meta">
+        <span class="wc-filter-meta-mark">✦</span>
         <span class="wc-filter-meta-title">Filtri</span>
         ${activeCount > 0
           ? `<span class="wc-filter-meta-count">${countLabel}</span>
@@ -683,52 +741,60 @@
           : `<span class="wc-filter-meta-hint">odaberite kriterije za pretragu</span>`}
       </div>
 
-      <div class="wc-filters-grid">
-        <div class="wc-filter-rows">
-          <div class="wc-filter-row">
-            <div class="wc-filter-row-head">Tijelo</div>
-            <div class="wc-filter-row-chips" data-group="body">
-              ${BODY.map(([id, L]) => `
-                <button class="wc-fchip ${af.body === id ? 'active' : ''}" data-id="${id}" type="button">
-                  <span class="wc-fchip-pict">${bodyDots(id)}</span>
-                  <span>${L}</span>
-                </button>
-              `).join('')}
-            </div>
-          </div>
-
-          <div class="wc-filter-row">
-            <div class="wc-filter-row-head">Cijena</div>
-            <div class="wc-filter-row-chips" data-group="tier">
-              ${TIERS.map(tier => `
-                <button class="wc-fchip wc-fchip-tier ${af.tier === tier ? 'active' : ''}" data-id="${tier}" type="button">${tier}</button>
-              `).join('')}
-            </div>
-          </div>
-
-          <div class="wc-filter-row">
-            <div class="wc-filter-row-head">Uz jelo</div>
-            <div class="wc-filter-row-chips" data-group="pair">
-              ${PAIRING_GROUPS.map(p => `
-                <button class="wc-fchip wc-fchip-pair ${af.pair === p.id ? 'active' : ''}" data-id="${p.id}" type="button">
-                  <span class="wc-fchip-pict">${pairIcon(p.id)}</span>
-                  <span>${p.label}</span>
-                </button>
-              `).join('')}
-            </div>
+      <div class="wc-filter-rows-full">
+        <div class="wc-filter-row">
+          <div class="wc-filter-row-head"><span class="wc-fr-mark">◆</span> Tijelo</div>
+          <div class="wc-filter-row-chips" data-group="body">
+            ${BODY.map(([id, L]) => `
+              <button class="wc-fchip ${af.body === id ? 'active' : ''}" data-id="${id}" type="button">
+                <span class="wc-fchip-pict">${bodyDots(id)}</span>
+                <span>${L}</span>
+              </button>
+            `).join('')}
           </div>
         </div>
 
-        <aside class="wc-cellar-intro" aria-label="O podrumu">
-          <div class="wc-cellar-intro-ornament">
-            <span class="wc-cellar-intro-rule"></span>
-            <span class="wc-cellar-intro-glyph">⚓</span>
-            <span class="wc-cellar-intro-rule"></span>
+        <div class="wc-filter-row">
+          <div class="wc-filter-row-head"><span class="wc-fr-mark">◆</span> Cijena</div>
+          <div class="wc-filter-row-chips" data-group="tier">
+            ${TIERS.map(tier => `
+              <button class="wc-fchip wc-fchip-tier ${af.tier === tier ? 'active' : ''}" data-id="${tier}" type="button">${tier}</button>
+            `).join('')}
           </div>
-          <h3 class="wc-cellar-intro-title">Naša priča</h3>
-          <p class="wc-cellar-intro-text">Na obali Malog Stona, gdje se more i loza dotiču stoljećima, čuvamo selekciju iz cijele Hrvatske — pošip s korčulanskog pijeska, plavac s peljeških padina, dalmatinske klasike i svjetska imena.</p>
-          <p class="wc-cellar-intro-tag">Otkrijte vino za stol — ili spakirajte kovčeg i ponesite Kapetanovu kuću kući.</p>
-        </aside>
+        </div>
+
+        <div class="wc-filter-row">
+          <div class="wc-filter-row-head"><span class="wc-fr-mark">◆</span> Uz jelo</div>
+          <div class="wc-filter-row-chips" data-group="pair">
+            ${PAIRING_GROUPS.map(p => `
+              <button class="wc-fchip wc-fchip-pair ${af.pair === p.id ? 'active' : ''}" data-id="${p.id}" type="button">
+                <span class="wc-fchip-pict">${pairIcon(p.id)}</span>
+                <span>${p.label}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="wc-filter-row">
+          <div class="wc-filter-row-head"><span class="wc-fr-mark wc-fr-mark-anchor">⚓</span> Položaj vinograda</div>
+          <div class="wc-filter-row-chips" data-group="region">
+            ${regions.map(([region, count]) => `
+              <button class="wc-fchip wc-fchip-region ${af.region === region ? 'active' : ''}" data-id="${escAttr(region)}" type="button">
+                <span class="wc-fchip-region-name">${esc(region)}</span>
+                <span class="wc-fchip-count">${count}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="wc-filter-row wc-filter-row-sort">
+          <div class="wc-filter-row-head"><span class="wc-fr-mark wc-fr-mark-star">✦</span> Sortiraj</div>
+          <div class="wc-filter-row-chips" data-group="sort">
+            ${SORT_OPTIONS.map(opt => `
+              <button class="wc-fchip wc-fchip-sort ${sort === opt.id ? 'active' : ''}" data-id="${escAttr(opt.id)}" type="button">${esc(opt.label)}</button>
+            `).join('')}
+          </div>
+        </div>
       </div>
     `;
 
@@ -738,7 +804,11 @@
       group.querySelectorAll('.wc-fchip').forEach(chip => {
         chip.addEventListener('click', () => {
           const v = chip.dataset.id;
-          state.activeFilters[key] = state.activeFilters[key] === v ? null : v;
+          if (key === 'sort') {
+            state.activeSort = v;
+          } else {
+            state.activeFilters[key] = state.activeFilters[key] === v ? null : v;
+          }
           renderFilters();
           renderGrid();
         });
@@ -748,7 +818,8 @@
     const clearBtn = $('wc-filter-clear');
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
-        state.activeFilters = { tier: null, body: null, pair: null };
+        state.activeFilters = { tier: null, body: null, pair: null, region: null };
+        state.activeSort = 'featured';
         renderFilters();
         renderGrid();
       });

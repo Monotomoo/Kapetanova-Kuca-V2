@@ -2411,7 +2411,47 @@ body.mode-cellar-active .guest-card {
   box-shadow: 0 4px 10px rgba(122,34,48,.28);
 }
 
-/* ─── Filters grid: filters left, cellar-intro right ─── */
+/* ─── Full-width filter card (sidebar removed) ─── */
+.wc-filter-rows-full {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(168,140,74,.06), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(168,140,74,.05), transparent 50%),
+    rgba(255,255,255,.55);
+  border: 1px solid var(--wc-paper-line);
+  border-radius: 14px;
+  padding: 24px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  transition: background .15s, border-color .15s, box-shadow .15s;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 2px 6px rgba(80,55,16,.08);
+}
+.wc-filter-rows-full:hover {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(168,140,74,.08), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(168,140,74,.07), transparent 50%),
+    rgba(255,255,255,.7);
+  border-color: var(--wc-paper-deep);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 6px 16px rgba(80,55,16,.12);
+}
+/* Brass screw-head dots top-left + bottom-right (captain's touch) */
+.wc-filter-rows-full::before,
+.wc-filter-rows-full::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--wc-brass-light), var(--wc-brass) 60%, var(--wc-gold-deep));
+  border: 1px solid var(--wc-gold-deep);
+  box-shadow: 0 1px 2px rgba(80,55,16,.35), inset 0 0.5px 0 rgba(255,255,255,.45);
+  z-index: 1;
+}
+.wc-filter-rows-full::before { top: 12px; left: 12px; }
+.wc-filter-rows-full::after  { bottom: 12px; right: 12px; }
+
+/* Legacy 2-col grid (intro sidebar) — kept so old class stays harmless if used */
 .wc-filters-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
@@ -2450,15 +2490,103 @@ body.mode-cellar-active .guest-card {
 .wc-filter-row-head {
   font-family: 'Cinzel', serif;
   font-weight: 700;
-  font-size: 12px;
-  letter-spacing: .32em;
+  font-size: 13px;
+  letter-spacing: .34em;
   text-transform: uppercase;
   color: var(--wc-ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
+.wc-fr-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--wc-wine);
+  letter-spacing: 0;
+  line-height: 1;
+  width: 12px;
+  text-shadow: 0 1px 0 rgba(255,255,255,.45);
+}
+.wc-fr-mark-anchor {
+  font-size: 13px;
+  color: var(--wc-wine);
+}
+.wc-fr-mark-star {
+  font-size: 12px;
+  color: var(--wc-brass);
+}
+
 .wc-filter-row-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 7px;
+}
+
+/* ─── Region chip (with count badge) ─── */
+.wc-fchip-region {
+  padding: 9px 8px 9px 16px;
+  gap: 10px;
+}
+.wc-fchip-region-name {
+  display: inline-block;
+}
+.wc-fchip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: .04em;
+  color: var(--wc-ink-soft);
+  background: rgba(168,140,74,.22);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(168,140,74,.4);
+  font-weight: 700;
+  font-style: normal;
+  min-width: 24px;
+}
+.wc-fchip-region.active .wc-fchip-count {
+  background: rgba(255,255,255,.22);
+  color: var(--wc-paper);
+  border-color: rgba(255,255,255,.35);
+}
+
+/* ─── Sort row — slightly distinct from filters ─── */
+.wc-filter-row-sort {
+  background: linear-gradient(180deg, rgba(195,149,54,.06), rgba(195,149,54,.03));
+  margin: 0 -10px -8px;
+  padding: 14px 10px 4px;
+  border-radius: 10px;
+  border-bottom: none !important;
+}
+.wc-fchip-sort {
+  font-family: 'Cinzel', serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: .04em;
+  padding: 8px 16px;
+}
+.wc-fchip-sort.active {
+  background: linear-gradient(180deg, var(--wc-brass-light), var(--wc-brass));
+  color: var(--wc-ink);
+  border-color: var(--wc-gold-deep);
+  box-shadow: 0 4px 10px rgba(195,149,54,.34), inset 0 1px 0 rgba(255,255,255,.4);
+  text-shadow: 0 1px 0 rgba(255,255,255,.3);
+}
+
+/* ─── Meta-bar mark (compass star before "Filtri") ─── */
+.wc-filter-meta-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--wc-wine);
+  margin-right: 2px;
+  text-shadow: 0 1px 0 rgba(255,255,255,.4);
 }
 
 /* ─── Right column: editorial cellar intro ─── */
@@ -4800,6 +4928,13 @@ body.mode-cellar-active .wc-app-chart { opacity: 0; }
   /* Filters grid stays 2-col; intro shrinks but stays beside */
   .wc-filters-grid { grid-template-columns: 1fr 1fr; }
   .wc-cellar-intro-text { font-size: 15.5px; }
+  .wc-filter-rows-full { padding: 22px 22px 22px; gap: 20px; }
+}
+@media (max-width: 600px) {
+  .wc-filter-rows-full { padding: 18px 16px 18px; gap: 18px; }
+  .wc-filter-row-head { font-size: 11.5px; letter-spacing: .26em; }
+  .wc-filter-row-sort { margin: 0 -6px -6px; padding: 12px 8px 4px; }
+  .wc-fchip-sort { font-size: 12.5px; padding: 7px 14px; }
 }
 @media (max-width: 680px) {
   .wc-cat-tabs { grid-template-columns: repeat(4, 1fr); }
