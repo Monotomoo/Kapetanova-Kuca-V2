@@ -388,6 +388,7 @@
     if (!root) return;
     root.innerHTML = `
       <div class="wc-stage">
+        <div class="wc-stage-chart" aria-hidden="true">${chartSVG()}</div>
         <div class="wc-sheet">
 
           <section class="wc-hero" aria-label="Kapetanova Kuća — Vinski podrum">
@@ -506,6 +507,97 @@
     for (let i = 0; i < n; i++) s += `<circle cx="${4 + i * 6}" cy="3" r="2" fill="currentColor"/>`;
     s += '</svg>';
     return s;
+  }
+
+  // ─── Background nautical chart (used in both dark and parchment themes) ─
+  // Color comes from CSS `currentColor` on the wrapper, so the same SVG
+  // adapts to whichever theme it sits in.
+  function chartSVG() {
+    return `<svg viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <radialGradient id="wcChartHalo" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stop-color="currentColor" stop-opacity="0.06"/>
+          <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="1600" height="1000" fill="url(#wcChartHalo)"/>
+
+      <!-- Lat/long grid -->
+      <g stroke="currentColor" stroke-width="0.5" opacity="0.55">
+        <line x1="0"    y1="125"  x2="1600" y2="125"/>
+        <line x1="0"    y1="275"  x2="1600" y2="275"/>
+        <line x1="0"    y1="425"  x2="1600" y2="425"/>
+        <line x1="0"    y1="575"  x2="1600" y2="575"/>
+        <line x1="0"    y1="725"  x2="1600" y2="725"/>
+        <line x1="0"    y1="875"  x2="1600" y2="875"/>
+        <line x1="125"  y1="0"    x2="125"  y2="1000"/>
+        <line x1="275"  y1="0"    x2="275"  y2="1000"/>
+        <line x1="425"  y1="0"    x2="425"  y2="1000"/>
+        <line x1="575"  y1="0"    x2="575"  y2="1000"/>
+        <line x1="725"  y1="0"    x2="725"  y2="1000"/>
+        <line x1="875"  y1="0"    x2="875"  y2="1000"/>
+        <line x1="1025" y1="0"    x2="1025" y2="1000"/>
+        <line x1="1175" y1="0"    x2="1175" y2="1000"/>
+        <line x1="1325" y1="0"    x2="1325" y2="1000"/>
+        <line x1="1475" y1="0"    x2="1475" y2="1000"/>
+      </g>
+
+      <!-- Depth contour lines (organic dashed curves) -->
+      <g stroke="currentColor" stroke-width="0.7" fill="none" opacity="0.45" stroke-dasharray="6 5">
+        <path d="M -50 220 Q 240 170 480 250 T 960 280 T 1450 230 L 1700 250"/>
+        <path d="M -50 380 Q 220 340 460 400 T 940 410 T 1400 370 L 1700 380"/>
+        <path d="M -50 660 Q 250 600 480 650 T 960 690 T 1400 660 L 1700 670"/>
+      </g>
+
+      <!-- Faint coastline silhouette running across the top -->
+      <g fill="currentColor" opacity="0.05">
+        <path d="M 0 60 Q 80 90 200 70 Q 350 30 500 80 Q 640 130 780 90 Q 920 50 1060 100 Q 1240 160 1400 110 Q 1500 80 1600 110 L 1600 0 L 0 0 Z"/>
+      </g>
+
+      <!-- Distant compass rose top-right -->
+      <g transform="translate(1380 180)" stroke="currentColor" fill="none" opacity="0.5">
+        <circle r="80" stroke-width="0.7"/>
+        <circle r="62" stroke-width="0.5" stroke-dasharray="2 4"/>
+        <circle r="22" stroke-width="0.4"/>
+        <line x1="0"   y1="-78" x2="0"   y2="78" stroke-width="0.7"/>
+        <line x1="-78" y1="0"   x2="78"  y2="0"  stroke-width="0.7"/>
+        <line x1="-55" y1="-55" x2="55"  y2="55" stroke-width="0.45"/>
+        <line x1="-55" y1="55"  x2="55"  y2="-55" stroke-width="0.45"/>
+        <polygon points="0,-22 5,-5 22,0 5,5 0,22 -5,5 -22,0 -5,-5" fill="currentColor" opacity="0.6"/>
+        <text x="0"   y="-90"  text-anchor="middle" font-family="Cinzel, serif" font-size="14" fill="currentColor" letter-spacing="2">N</text>
+        <text x="92"  y="5"    text-anchor="middle" font-family="Cinzel, serif" font-size="14" fill="currentColor" letter-spacing="2">E</text>
+        <text x="0"   y="100"  text-anchor="middle" font-family="Cinzel, serif" font-size="14" fill="currentColor" letter-spacing="2">S</text>
+        <text x="-92" y="5"    text-anchor="middle" font-family="Cinzel, serif" font-size="14" fill="currentColor" letter-spacing="2">W</text>
+      </g>
+
+      <!-- Smaller compass rose bottom-left -->
+      <g transform="translate(180 820)" stroke="currentColor" fill="none" opacity="0.4">
+        <circle r="50" stroke-width="0.55"/>
+        <circle r="36" stroke-width="0.4" stroke-dasharray="2 3"/>
+        <line x1="0"   y1="-48" x2="0"  y2="48" stroke-width="0.5"/>
+        <line x1="-48" y1="0"   x2="48" y2="0"  stroke-width="0.5"/>
+        <line x1="-34" y1="-34" x2="34" y2="34" stroke-width="0.4"/>
+        <line x1="-34" y1="34"  x2="34" y2="-34" stroke-width="0.4"/>
+      </g>
+
+      <!-- Coordinate labels at some grid intersections -->
+      <g font-family="'JetBrains Mono', monospace" font-size="10" fill="currentColor" opacity="0.45" letter-spacing="2">
+        <text x="135"  y="120">42°50′N</text>
+        <text x="135"  y="270">42°51′N</text>
+        <text x="135"  y="420">42°52′N</text>
+        <text x="135"  y="570">42°53′N</text>
+        <text x="430"  y="985">17°41′E</text>
+        <text x="730"  y="985">17°42′E</text>
+        <text x="1030" y="985">17°43′E</text>
+      </g>
+
+      <!-- Tiny ship marker near the second compass -->
+      <g transform="translate(720 540)" stroke="currentColor" fill="none" opacity="0.5">
+        <path d="M -8 0 L 8 0 L 5 4 L -5 4 Z" stroke-width="0.6"/>
+        <line x1="0" y1="0" x2="0" y2="-10" stroke-width="0.5"/>
+        <line x1="0" y1="-10" x2="6" y2="-3" stroke-width="0.5"/>
+      </g>
+    </svg>`;
   }
 
   // ─── Profile-axis icons (line-drawn, parchment-friendly) ─
@@ -1348,6 +1440,17 @@
       t.className = 'wc-toast';
       t.textContent = 'Ukrcano';
       document.body.appendChild(t);
+    }
+
+    // Body-level nautical chart background (visible in dark themes)
+    if (!$('wc-app-chart')) {
+      const chart = document.createElement('div');
+      chart.id = 'wc-app-chart';
+      chart.className = 'wc-app-chart';
+      chart.setAttribute('aria-hidden', 'true');
+      chart.innerHTML = chartSVG();
+      // Insert as the very first child of body so it sits below all content
+      document.body.insertBefore(chart, document.body.firstChild);
     }
 
     if (!$('wc-transition')) {

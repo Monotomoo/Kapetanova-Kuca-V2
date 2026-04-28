@@ -4643,6 +4643,69 @@ body.mode-cellar-active .guest-card {
 }
 
 /* ═══════════════════════════════════════════════════
+   APP-WIDE NAUTICAL CHART BACKGROUND
+   ═══════════════════════════════════════════════════ */
+
+/* Body-level chart — visible in dark themes (waitlist / booking / club / pin) */
+.wc-app-chart {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  color: var(--sky-muted);
+  opacity: 0.45;
+  transition: opacity .5s ease;
+}
+.wc-app-chart svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Hidden when cellar mode active — the cellar has its own chart inside .wc-stage */
+body.mode-cellar-active .wc-app-chart { opacity: 0; }
+
+/* Make sure existing app content stacks above the chart */
+#guest-view, #admin-view, #pin-overlay {
+  position: relative;
+  z-index: 1;
+}
+/* Same for Ostrea Club screens */
+#club-screen-wrap { z-index: 60; }
+
+/* In-cellar chart — sits inside .wc-stage, behind the .wc-sheet,
+   tinted brass to feel like a chart pinned to the captain's cabin wall */
+.wc-stage {
+  /* Ensure stacking context so the chart child paints below the sheet */
+  isolation: isolate;
+}
+.wc-stage-chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  color: var(--wc-brass-light);
+  opacity: 0.55;
+}
+.wc-stage-chart svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Sheet sits above the in-cellar chart */
+.wc-sheet {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wc-app-chart { transition: none; }
+}
+
+/* ═══════════════════════════════════════════════════
    MODE TRANSITION — chart-style parchment unfurl + compass
    ═══════════════════════════════════════════════════ */
 .wc-transition {
